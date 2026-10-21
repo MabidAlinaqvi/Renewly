@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/format.dart';
+import 'core/home_widget.dart';
 import 'core/notifications.dart';
 import 'core/theme.dart';
 import 'data/providers.dart';
@@ -54,7 +55,10 @@ class _RenewlyAppState extends ConsumerState<RenewlyApp> {
       _rescheduleTimer?.cancel();
       _rescheduleTimer = Timer(
         const Duration(milliseconds: 500),
-        () => rescheduleNotifications(db),
+        () {
+          rescheduleNotifications(db);
+          updateHomeWidget(db);
+        },
       );
     }
 
