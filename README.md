@@ -10,6 +10,9 @@ Track every subscription and get reminded before you pay. A Flutter app for Andr
 - Reminders on the day or 1, 2, 3 or 7 days before, at a time you choose.
 - Quick add for popular services (Netflix, Spotify, ChatGPT, iCloud and more) with links to their cancel pages.
 - Pause a subscription to keep it in the list without reminders.
+- Home-screen widget with the monthly total and the next three renewals.
+- Backup to a file (Drive, email, anywhere) and restore on another phone.
+- The default currency follows the phone's country.
 - Works offline. No account, and data never leaves the phone.
 
 ## Code
@@ -25,4 +28,7 @@ Track every subscription and get reminded before you pay. A Flutter app for Andr
 dart run build_runner build
 flutter test
 flutter build apk --debug
+flutter build appbundle --release
 ```
+
+Release builds are signed with the upload key named in `android/key.properties` (git-ignored). Store listing and privacy policy are in `docs/`.
