@@ -34,18 +34,42 @@ class Settings extends Table {
   TextColumn get currency => text()();
   IntColumn get reminderHour => integer().withDefault(const Constant(9))();
   BoolColumn get remindersOn => boolean().withDefault(const Constant(true))();
+  // When the exchange rates were last downloaded.
+  DateTimeColumn get ratesUpdatedAt => dateTime().nullable()();
+  // Country code (e.g. PK) seen on the last start, to notice travel.
+  TextColumn get lastCountry => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Subscriptions, Settings])
+/// How many units of [currency] one US dollar buys.
+class Rates extends Table {
+  TextColumn get currency => text()();
+  RealColumn get perUsd => real()();
+
+  @override
+  Set<Column> get primaryKey => {currency};
+}
+
+@DriftDatabase(tables: [Subscriptions, Settings, Rates])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'renewly'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(settings, settings.ratesUpdatedAt);
+        await m.addColumn(settings, settings.lastCountry);
+        await m.createTable(rates);
+      }
+    },
+  );
 
   Stream<List<Subscription>> watchSubscriptions() =>
       (select(subscriptions)..orderBy([(s) => OrderingTerm(expression: s.name)])).watch();
@@ -73,6 +97,23 @@ class AppDatabase extends _$AppDatabase {
         SettingsCompanion.insert(currency: currency),
         mode: InsertMode.insertOrIgnore,
       );
+
+  Stream<Map<String, double>> watchRates() =>
+      select(rates).watch().map((rows) => {for (final r in rows) r.currency: r.perUsd});
+
+  Future<Map<String, double>> currentRates() async =>
+      {for (final r in await select(rates).get()) r.currency: r.perUsd};
+
+  /// Replaces all rates in one go, so readers never see half a set.
+  Future<void> saveRates(Map<String, double> perUsd, DateTime at) => transaction(() async {
+    await delete(rates).go();
+    await batch(
+      (b) => b.insertAll(rates, [
+        for (final e in perUsd.entries) RatesCompanion.insert(currency: e.key, perUsd: e.value),
+      ]),
+    );
+    await updateSettings(SettingsCompanion(ratesUpdatedAt: Value(at)));
+  });
 
   Future<void> updateSettings(SettingsCompanion changes) =>
       (update(settings)..where((s) => s.id.equals(1))).write(changes);

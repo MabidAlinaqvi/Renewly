@@ -858,12 +858,37 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _ratesUpdatedAtMeta = const VerificationMeta(
+    'ratesUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> ratesUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'rates_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastCountryMeta = const VerificationMeta(
+    'lastCountry',
+  );
+  @override
+  late final GeneratedColumn<String> lastCountry = GeneratedColumn<String>(
+    'last_country',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     currency,
     reminderHour,
     remindersOn,
+    ratesUpdatedAt,
+    lastCountry,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -906,6 +931,24 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('rates_updated_at')) {
+      context.handle(
+        _ratesUpdatedAtMeta,
+        ratesUpdatedAt.isAcceptableOrUnknown(
+          data['rates_updated_at']!,
+          _ratesUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_country')) {
+      context.handle(
+        _lastCountryMeta,
+        lastCountry.isAcceptableOrUnknown(
+          data['last_country']!,
+          _lastCountryMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -931,6 +974,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}reminders_on'],
       )!,
+      ratesUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}rates_updated_at'],
+      ),
+      lastCountry: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_country'],
+      ),
     );
   }
 
@@ -945,11 +996,15 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String currency;
   final int reminderHour;
   final bool remindersOn;
+  final DateTime? ratesUpdatedAt;
+  final String? lastCountry;
   const Setting({
     required this.id,
     required this.currency,
     required this.reminderHour,
     required this.remindersOn,
+    this.ratesUpdatedAt,
+    this.lastCountry,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -958,6 +1013,12 @@ class Setting extends DataClass implements Insertable<Setting> {
     map['currency'] = Variable<String>(currency);
     map['reminder_hour'] = Variable<int>(reminderHour);
     map['reminders_on'] = Variable<bool>(remindersOn);
+    if (!nullToAbsent || ratesUpdatedAt != null) {
+      map['rates_updated_at'] = Variable<DateTime>(ratesUpdatedAt);
+    }
+    if (!nullToAbsent || lastCountry != null) {
+      map['last_country'] = Variable<String>(lastCountry);
+    }
     return map;
   }
 
@@ -967,6 +1028,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       currency: Value(currency),
       reminderHour: Value(reminderHour),
       remindersOn: Value(remindersOn),
+      ratesUpdatedAt: ratesUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ratesUpdatedAt),
+      lastCountry: lastCountry == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastCountry),
     );
   }
 
@@ -980,6 +1047,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       currency: serializer.fromJson<String>(json['currency']),
       reminderHour: serializer.fromJson<int>(json['reminderHour']),
       remindersOn: serializer.fromJson<bool>(json['remindersOn']),
+      ratesUpdatedAt: serializer.fromJson<DateTime?>(json['ratesUpdatedAt']),
+      lastCountry: serializer.fromJson<String?>(json['lastCountry']),
     );
   }
   @override
@@ -990,6 +1059,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       'currency': serializer.toJson<String>(currency),
       'reminderHour': serializer.toJson<int>(reminderHour),
       'remindersOn': serializer.toJson<bool>(remindersOn),
+      'ratesUpdatedAt': serializer.toJson<DateTime?>(ratesUpdatedAt),
+      'lastCountry': serializer.toJson<String?>(lastCountry),
     };
   }
 
@@ -998,11 +1069,17 @@ class Setting extends DataClass implements Insertable<Setting> {
     String? currency,
     int? reminderHour,
     bool? remindersOn,
+    Value<DateTime?> ratesUpdatedAt = const Value.absent(),
+    Value<String?> lastCountry = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     currency: currency ?? this.currency,
     reminderHour: reminderHour ?? this.reminderHour,
     remindersOn: remindersOn ?? this.remindersOn,
+    ratesUpdatedAt: ratesUpdatedAt.present
+        ? ratesUpdatedAt.value
+        : this.ratesUpdatedAt,
+    lastCountry: lastCountry.present ? lastCountry.value : this.lastCountry,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -1014,6 +1091,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       remindersOn: data.remindersOn.present
           ? data.remindersOn.value
           : this.remindersOn,
+      ratesUpdatedAt: data.ratesUpdatedAt.present
+          ? data.ratesUpdatedAt.value
+          : this.ratesUpdatedAt,
+      lastCountry: data.lastCountry.present
+          ? data.lastCountry.value
+          : this.lastCountry,
     );
   }
 
@@ -1023,13 +1106,22 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('id: $id, ')
           ..write('currency: $currency, ')
           ..write('reminderHour: $reminderHour, ')
-          ..write('remindersOn: $remindersOn')
+          ..write('remindersOn: $remindersOn, ')
+          ..write('ratesUpdatedAt: $ratesUpdatedAt, ')
+          ..write('lastCountry: $lastCountry')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, currency, reminderHour, remindersOn);
+  int get hashCode => Object.hash(
+    id,
+    currency,
+    reminderHour,
+    remindersOn,
+    ratesUpdatedAt,
+    lastCountry,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1037,7 +1129,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.id == this.id &&
           other.currency == this.currency &&
           other.reminderHour == this.reminderHour &&
-          other.remindersOn == this.remindersOn);
+          other.remindersOn == this.remindersOn &&
+          other.ratesUpdatedAt == this.ratesUpdatedAt &&
+          other.lastCountry == this.lastCountry);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -1045,29 +1139,39 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String> currency;
   final Value<int> reminderHour;
   final Value<bool> remindersOn;
+  final Value<DateTime?> ratesUpdatedAt;
+  final Value<String?> lastCountry;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.currency = const Value.absent(),
     this.reminderHour = const Value.absent(),
     this.remindersOn = const Value.absent(),
+    this.ratesUpdatedAt = const Value.absent(),
+    this.lastCountry = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
     required String currency,
     this.reminderHour = const Value.absent(),
     this.remindersOn = const Value.absent(),
+    this.ratesUpdatedAt = const Value.absent(),
+    this.lastCountry = const Value.absent(),
   }) : currency = Value(currency);
   static Insertable<Setting> custom({
     Expression<int>? id,
     Expression<String>? currency,
     Expression<int>? reminderHour,
     Expression<bool>? remindersOn,
+    Expression<DateTime>? ratesUpdatedAt,
+    Expression<String>? lastCountry,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (currency != null) 'currency': currency,
       if (reminderHour != null) 'reminder_hour': reminderHour,
       if (remindersOn != null) 'reminders_on': remindersOn,
+      if (ratesUpdatedAt != null) 'rates_updated_at': ratesUpdatedAt,
+      if (lastCountry != null) 'last_country': lastCountry,
     });
   }
 
@@ -1076,12 +1180,16 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String>? currency,
     Value<int>? reminderHour,
     Value<bool>? remindersOn,
+    Value<DateTime?>? ratesUpdatedAt,
+    Value<String?>? lastCountry,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
       currency: currency ?? this.currency,
       reminderHour: reminderHour ?? this.reminderHour,
       remindersOn: remindersOn ?? this.remindersOn,
+      ratesUpdatedAt: ratesUpdatedAt ?? this.ratesUpdatedAt,
+      lastCountry: lastCountry ?? this.lastCountry,
     );
   }
 
@@ -1100,6 +1208,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (remindersOn.present) {
       map['reminders_on'] = Variable<bool>(remindersOn.value);
     }
+    if (ratesUpdatedAt.present) {
+      map['rates_updated_at'] = Variable<DateTime>(ratesUpdatedAt.value);
+    }
+    if (lastCountry.present) {
+      map['last_country'] = Variable<String>(lastCountry.value);
+    }
     return map;
   }
 
@@ -1109,7 +1223,218 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('id: $id, ')
           ..write('currency: $currency, ')
           ..write('reminderHour: $reminderHour, ')
-          ..write('remindersOn: $remindersOn')
+          ..write('remindersOn: $remindersOn, ')
+          ..write('ratesUpdatedAt: $ratesUpdatedAt, ')
+          ..write('lastCountry: $lastCountry')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RatesTable extends Rates with TableInfo<$RatesTable, Rate> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _perUsdMeta = const VerificationMeta('perUsd');
+  @override
+  late final GeneratedColumn<double> perUsd = GeneratedColumn<double>(
+    'per_usd',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [currency, perUsd];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Rate> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_currencyMeta);
+    }
+    if (data.containsKey('per_usd')) {
+      context.handle(
+        _perUsdMeta,
+        perUsd.isAcceptableOrUnknown(data['per_usd']!, _perUsdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_perUsdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {currency};
+  @override
+  Rate map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Rate(
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      perUsd: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}per_usd'],
+      )!,
+    );
+  }
+
+  @override
+  $RatesTable createAlias(String alias) {
+    return $RatesTable(attachedDatabase, alias);
+  }
+}
+
+class Rate extends DataClass implements Insertable<Rate> {
+  final String currency;
+  final double perUsd;
+  const Rate({required this.currency, required this.perUsd});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['currency'] = Variable<String>(currency);
+    map['per_usd'] = Variable<double>(perUsd);
+    return map;
+  }
+
+  RatesCompanion toCompanion(bool nullToAbsent) {
+    return RatesCompanion(currency: Value(currency), perUsd: Value(perUsd));
+  }
+
+  factory Rate.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Rate(
+      currency: serializer.fromJson<String>(json['currency']),
+      perUsd: serializer.fromJson<double>(json['perUsd']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'currency': serializer.toJson<String>(currency),
+      'perUsd': serializer.toJson<double>(perUsd),
+    };
+  }
+
+  Rate copyWith({String? currency, double? perUsd}) =>
+      Rate(currency: currency ?? this.currency, perUsd: perUsd ?? this.perUsd);
+  Rate copyWithCompanion(RatesCompanion data) {
+    return Rate(
+      currency: data.currency.present ? data.currency.value : this.currency,
+      perUsd: data.perUsd.present ? data.perUsd.value : this.perUsd,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Rate(')
+          ..write('currency: $currency, ')
+          ..write('perUsd: $perUsd')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(currency, perUsd);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Rate &&
+          other.currency == this.currency &&
+          other.perUsd == this.perUsd);
+}
+
+class RatesCompanion extends UpdateCompanion<Rate> {
+  final Value<String> currency;
+  final Value<double> perUsd;
+  final Value<int> rowid;
+  const RatesCompanion({
+    this.currency = const Value.absent(),
+    this.perUsd = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RatesCompanion.insert({
+    required String currency,
+    required double perUsd,
+    this.rowid = const Value.absent(),
+  }) : currency = Value(currency),
+       perUsd = Value(perUsd);
+  static Insertable<Rate> custom({
+    Expression<String>? currency,
+    Expression<double>? perUsd,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (currency != null) 'currency': currency,
+      if (perUsd != null) 'per_usd': perUsd,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RatesCompanion copyWith({
+    Value<String>? currency,
+    Value<double>? perUsd,
+    Value<int>? rowid,
+  }) {
+    return RatesCompanion(
+      currency: currency ?? this.currency,
+      perUsd: perUsd ?? this.perUsd,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (perUsd.present) {
+      map['per_usd'] = Variable<double>(perUsd.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RatesCompanion(')
+          ..write('currency: $currency, ')
+          ..write('perUsd: $perUsd, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1120,11 +1445,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $SubscriptionsTable subscriptions = $SubscriptionsTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $RatesTable rates = $RatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [subscriptions, settings];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    subscriptions,
+    settings,
+    rates,
+  ];
 }
 
 typedef $$SubscriptionsTableCreateCompanionBuilder =
@@ -1517,12 +1847,16 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   required String currency,
   Value<int> reminderHour,
   Value<bool> remindersOn,
+  Value<DateTime?> ratesUpdatedAt,
+  Value<String?> lastCountry,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int> id,
   Value<String> currency,
   Value<int> reminderHour,
   Value<bool> remindersOn,
+  Value<DateTime?> ratesUpdatedAt,
+  Value<String?> lastCountry,
 });
 
 class $$SettingsTableFilterComposer
@@ -1551,6 +1885,16 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get remindersOn => $composableBuilder(
     column: $table.remindersOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get ratesUpdatedAt => $composableBuilder(
+    column: $table.ratesUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastCountry => $composableBuilder(
+    column: $table.lastCountry,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1583,6 +1927,16 @@ class $$SettingsTableOrderingComposer
     column: $table.remindersOn,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get ratesUpdatedAt => $composableBuilder(
+    column: $table.ratesUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastCountry => $composableBuilder(
+    column: $table.lastCountry,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -1607,6 +1961,16 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get remindersOn => $composableBuilder(
     column: $table.remindersOn,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get ratesUpdatedAt => $composableBuilder(
+    column: $table.ratesUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastCountry => $composableBuilder(
+    column: $table.lastCountry,
     builder: (column) => column,
   );
 }
@@ -1643,11 +2007,15 @@ class $$SettingsTableTableManager
                 Value<String> currency = const Value.absent(),
                 Value<int> reminderHour = const Value.absent(),
                 Value<bool> remindersOn = const Value.absent(),
+                Value<DateTime?> ratesUpdatedAt = const Value.absent(),
+                Value<String?> lastCountry = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 currency: currency,
                 reminderHour: reminderHour,
                 remindersOn: remindersOn,
+                ratesUpdatedAt: ratesUpdatedAt,
+                lastCountry: lastCountry,
               ),
           createCompanionCallback:
               ({
@@ -1655,11 +2023,15 @@ class $$SettingsTableTableManager
                 required String currency,
                 Value<int> reminderHour = const Value.absent(),
                 Value<bool> remindersOn = const Value.absent(),
+                Value<DateTime?> ratesUpdatedAt = const Value.absent(),
+                Value<String?> lastCountry = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 currency: currency,
                 reminderHour: reminderHour,
                 remindersOn: remindersOn,
+                ratesUpdatedAt: ratesUpdatedAt,
+                lastCountry: lastCountry,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1692,6 +2064,149 @@ typedef $$SettingsTableProcessedTableManager =
       Setting,
       PrefetchHooks Function()
     >;
+typedef $$RatesTableCreateCompanionBuilder = RatesCompanion Function({
+  required String currency,
+  required double perUsd,
+  Value<int> rowid,
+});
+typedef $$RatesTableUpdateCompanionBuilder = RatesCompanion Function({
+  Value<String> currency,
+  Value<double> perUsd,
+  Value<int> rowid,
+});
+
+class $$RatesTableFilterComposer extends Composer<_$AppDatabase, $RatesTable> {
+  $$RatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get perUsd => $composableBuilder(
+    column: $table.perUsd,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RatesTable> {
+  $$RatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get perUsd => $composableBuilder(
+    column: $table.perUsd,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RatesTable> {
+  $$RatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<double> get perUsd =>
+      $composableBuilder(column: $table.perUsd, builder: (column) => column);
+}
+
+class $$RatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RatesTable,
+          Rate,
+          $$RatesTableFilterComposer,
+          $$RatesTableOrderingComposer,
+          $$RatesTableAnnotationComposer,
+          $$RatesTableCreateCompanionBuilder,
+          $$RatesTableUpdateCompanionBuilder,
+          (Rate, BaseReferences<_$AppDatabase, $RatesTable, Rate>),
+          Rate,
+          PrefetchHooks Function()
+        > {
+  $$RatesTableTableManager(_$AppDatabase db, $RatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> currency = const Value.absent(),
+                Value<double> perUsd = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RatesCompanion(
+                currency: currency,
+                perUsd: perUsd,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String currency,
+                required double perUsd,
+                Value<int> rowid = const Value.absent(),
+              }) => RatesCompanion.insert(
+                currency: currency,
+                perUsd: perUsd,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RatesTable, Rate>(table),
+                  BaseReferences<_$AppDatabase, $RatesTable, Rate>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RatesTable,
+      Rate,
+      $$RatesTableFilterComposer,
+      $$RatesTableOrderingComposer,
+      $$RatesTableAnnotationComposer,
+      $$RatesTableCreateCompanionBuilder,
+      $$RatesTableUpdateCompanionBuilder,
+      (Rate, BaseReferences<_$AppDatabase, $RatesTable, Rate>),
+      Rate,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1700,4 +2215,6 @@ class $AppDatabaseManager {
       $$SubscriptionsTableTableManager(_db, _db.subscriptions);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$RatesTableTableManager get rates =>
+      $$RatesTableTableManager(_db, _db.rates);
 }

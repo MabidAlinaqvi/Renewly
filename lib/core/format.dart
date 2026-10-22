@@ -27,20 +27,40 @@ const _countryCurrency = {
 
 const _country = MethodChannel('renewly/country');
 
-/// The currency where the user is, used as the default on first start: the
-/// mobile network's country first (follows the user abroad), then the SIM's,
-/// then the phone's region setting.
+/// The currency where the user is, used as the default on first start:
+/// 1. the mobile network's country (follows the user abroad, and phones
+///    register for emergency calls even without a SIM),
+/// 2. the SIM's country,
+/// 3. approximate location, only when there is neither, so most users never
+///    see a location prompt,
+/// 4. the phone's region setting.
 Future<String> deviceCurrency() async {
   try {
     final found = await _country.invokeMapMethod<String, String>('countries');
     for (final country in [found?['network'], found?['sim']]) {
       if (_countryCurrency[country?.toUpperCase()] case final code?) return code;
     }
+    final located = await _country.invokeMethod<String>('locationCountry');
+    if (_countryCurrency[located?.toUpperCase()] case final code?) return code;
   } catch (_) {
-    // No telephony (tablet, tests): fall back to the region setting.
+    // No telephony or location (tests, some tablets): use the region setting.
   }
   return currencyForLocale(Platform.localeName);
 }
+
+/// The country the phone is in now, from the mobile network or SIM. Never
+/// asks for location, so it's safe to call on every start.
+Future<String?> currentCountry() async {
+  try {
+    final found = await _country.invokeMapMethod<String, String>('countries');
+    for (final country in [found?['network'], found?['sim']]) {
+      if (country != null && country.length == 2) return country.toUpperCase();
+    }
+  } catch (_) {}
+  return null;
+}
+
+String? currencyOfCountry(String country) => _countryCurrency[country.toUpperCase()];
 
 String currencyForLocale(String locale) {
   final parts = locale.split(RegExp('[-_.]'));
@@ -73,8 +93,15 @@ double fromMinor(num minor, String currency) {
   return minor / factor;
 }
 
-String money(num minor, String currency) =>
-    NumberFormat.simpleCurrency(name: currency).format(fromMinor(minor, currency));
+String money(num minor, String currency) => moneyMajor(fromMinor(minor, currency), currency);
+
+/// [amount] already in major units (dollars, rupees).
+String moneyMajor(num amount, String currency) =>
+    NumberFormat.simpleCurrency(name: currency).format(amount);
+
+/// Short form for chart axes: Rs1.2K, $45.
+String moneyCompact(num amount, String currency) =>
+    NumberFormat.compactSimpleCurrency(name: currency).format(amount);
 
 /// "Today", "Tomorrow", "In 5 days", then a date for anything further.
 String whenLabel(DateTime date, DateTime today) {

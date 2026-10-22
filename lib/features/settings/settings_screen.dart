@@ -2,13 +2,16 @@ import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/format.dart';
 import '../../core/notifications.dart';
 import '../../data/backup.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/rates.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -36,6 +39,24 @@ class SettingsScreen extends ConsumerWidget {
               ],
               onChanged: (v) => db.updateSettings(SettingsCompanion(currency: Value(v!))),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.currency_exchange),
+            title: const Text('Exchange rates'),
+            subtitle: Text(
+              settings.ratesUpdatedAt == null
+                  ? 'Not downloaded yet. Totals convert other currencies once they are.'
+                  : 'Updated ${DateFormat.yMMMd().add_jm().format(settings.ratesUpdatedAt!)}. Tap to update now.',
+            ),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              await refreshRates(db, force: true);
+              final now = (await db.currentSettings())?.ratesUpdatedAt;
+              final fresh = now != null && DateTime.now().difference(now).inMinutes < 1;
+              messenger.showSnackBar(
+                SnackBar(content: Text(fresh ? 'Rates updated' : 'Couldn\'t update. Check your internet.')),
+              );
+            },
           ),
           SwitchListTile(
             secondary: const Icon(Icons.notifications_outlined),
@@ -88,6 +109,12 @@ class SettingsScreen extends ConsumerWidget {
             leading: Icon(Icons.lock_outline),
             title: Text('Private by design'),
             subtitle: Text('Everything stays on this phone. No account, no tracking.'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text(ratesCredit),
+            subtitle: const Text('Daily currency rates. Nothing about you is sent.'),
+            onTap: () => launchUrl(Uri.parse(ratesCreditUrl), mode: LaunchMode.externalApplication),
           ),
         ],
       ),

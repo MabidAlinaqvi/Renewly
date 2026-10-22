@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:home_widget/home_widget.dart';
 
 import '../data/database.dart';
+import '../data/rates.dart';
+import '../data/spending.dart';
 import '../data/renewal.dart';
 import 'format.dart';
 
@@ -17,10 +19,9 @@ Future<void> updateHomeWidget(AppDatabase db) async {
   final today = DateTime.now();
   final subs = [for (final s in await db.allSubscriptions()) if (s.active) s];
 
-  var monthly = 0.0;
+  final monthly = Spending(subs, currency, Converter(await db.currentRates())).monthly;
   final bills = <({DateTime date, String name, String amount})>[];
   for (final s in subs) {
-    if (s.currency == currency) monthly += s.cycle.perMonth(s.amountMinor);
     for (final d in upcomingBills(s.cycle, s.startDate, today, count: 3)) {
       bills.add((date: d, name: s.name, amount: money(s.amountMinor, s.currency)));
     }
@@ -28,7 +29,7 @@ Future<void> updateHomeWidget(AppDatabase db) async {
   bills.sort((a, b) => a.date.compareTo(b.date));
 
   try {
-    await HomeWidget.saveWidgetData('total', subs.isEmpty ? '' : '${money(monthly, currency)} / month');
+    await HomeWidget.saveWidgetData('total', subs.isEmpty ? '' : '${moneyMajor(monthly, currency)} / month');
     await HomeWidget.saveWidgetData(
       'bills',
       jsonEncode([

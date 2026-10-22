@@ -1,5 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Daily exchange rates only; nothing about the user is sent. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only asked on phones without a SIM, to pick the default currency. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <application
         android:label="Renewly"
         android:name="${applicationName}"
