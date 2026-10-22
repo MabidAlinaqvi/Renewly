@@ -5,10 +5,16 @@ import 'package:renewly/core/format.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  void phoneIn({required String network, required String sim}) {
+  var locationAsked = false;
+  void phoneIn({required String network, required String sim, String? located}) {
+    locationAsked = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('renewly/country'),
-      (_) async => {'network': network, 'sim': sim},
+      (call) async {
+        if (call.method == 'countries') return {'network': network, 'sim': sim};
+        locationAsked = true;
+        return located;
+      },
     );
   }
 
@@ -20,6 +26,13 @@ void main() {
   test('the SIM decides when there is no network signal', () async {
     phoneIn(network: '', sim: 'ae');
     expect(await deviceCurrency(), 'AED');
+    expect(locationAsked, isFalse);
+  });
+
+  test('location is used only when there is no SIM or network', () async {
+    phoneIn(network: '', sim: '', located: 'CA');
+    expect(await deviceCurrency(), 'CAD');
+    expect(locationAsked, isTrue);
   });
 
   test('currency comes from the country, even when intl lacks the locale', () {
