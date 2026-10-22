@@ -116,7 +116,8 @@ class _EditScreenState extends ConsumerState<EditScreen> {
     final amount = double.parse(_amount.text.replaceAll(',', '.'));
     final url = _cancelUrl.text.trim();
     final notes = _notes.text.trim();
-    await ref.read(databaseProvider).saveSubscription(
+    final db = ref.read(databaseProvider);
+    await db.saveSubscription(
       SubscriptionsCompanion.insert(
         id: _id ?? const Uuid().v4(),
         name: _name.text.trim(),
@@ -133,6 +134,12 @@ class _EditScreenState extends ConsumerState<EditScreen> {
         active: Value(_active),
       ),
     );
+    // Ask only after the user has chosen a subscription and saved it. Saving
+    // still succeeds when notification access is denied.
+    final settings = await db.currentSettings();
+    if (_isNew && (settings?.remindersOn ?? true)) {
+      await requestNotificationPermission();
+    }
     if (mounted) Navigator.pop(context);
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
-import '../../core/notifications.dart';
 import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
@@ -24,9 +23,6 @@ class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   Future<void> _add(BuildContext context) async {
-    // Ask for notification permission on the first add, when the reason is obvious.
-    await requestNotificationPermission();
-    if (!context.mounted) return;
     final template = await showTemplateSheet(context);
     if (template == null || !context.mounted) return;
     await Navigator.of(context).push(
