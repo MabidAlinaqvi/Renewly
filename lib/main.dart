@@ -47,7 +47,7 @@ class _RenewlyAppState extends ConsumerState<RenewlyApp> {
 
   Future<void> _start() async {
     final db = ref.read(databaseProvider);
-    await db.ensureSettings(deviceCurrency());
+    await db.ensureSettings(await deviceCurrency());
     await initNotifications(_openSubscription);
     // Any change to subscriptions or settings rebuilds the reminders, batched
     // so a burst of edits schedules once.
