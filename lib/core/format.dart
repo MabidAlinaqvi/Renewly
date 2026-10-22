@@ -27,17 +27,23 @@ const _countryCurrency = {
 
 const _country = MethodChannel('renewly/country');
 
-/// The currency where the user is, used as the default on first start: the
-/// mobile network's country first (follows the user abroad), then the SIM's,
-/// then the phone's region setting.
+/// The currency where the user is, used as the default on first start:
+/// 1. the mobile network's country (follows the user abroad, and phones
+///    register for emergency calls even without a SIM),
+/// 2. the SIM's country,
+/// 3. approximate location, only when there is neither, so most users never
+///    see a location prompt,
+/// 4. the phone's region setting.
 Future<String> deviceCurrency() async {
   try {
     final found = await _country.invokeMapMethod<String, String>('countries');
     for (final country in [found?['network'], found?['sim']]) {
       if (_countryCurrency[country?.toUpperCase()] case final code?) return code;
     }
+    final located = await _country.invokeMethod<String>('locationCountry');
+    if (_countryCurrency[located?.toUpperCase()] case final code?) return code;
   } catch (_) {
-    // No telephony (tablet, tests): fall back to the region setting.
+    // No telephony or location (tests, some tablets): use the region setting.
   }
   return currencyForLocale(Platform.localeName);
 }

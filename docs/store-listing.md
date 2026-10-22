@@ -35,6 +35,7 @@ No account. No ads. No tracking. Your subscriptions stay on your phone.
 - Data collected: **None**
 - Data shared: **None**
 - Data is processed only on the device. Backups are files the user chooses where to send.
+- Approximate location: requested only on phones without a SIM, used once to pick the default currency, never stored. It's processed on the device (Android's geocoder), so Google's guidance treats it as not collected. If the review asks, declare "Approximate location — app functionality, not shared, processed ephemerally".
 
 ## Content rating
 
