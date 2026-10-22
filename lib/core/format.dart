@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../data/renewal.dart';
@@ -24,8 +25,22 @@ const _countryCurrency = {
   'GR': 'EUR',
 };
 
-/// The phone's own currency, used as the default on first start.
-String deviceCurrency() => currencyForLocale(Platform.localeName);
+const _country = MethodChannel('renewly/country');
+
+/// The currency where the user is, used as the default on first start: the
+/// mobile network's country first (follows the user abroad), then the SIM's,
+/// then the phone's region setting.
+Future<String> deviceCurrency() async {
+  try {
+    final found = await _country.invokeMapMethod<String, String>('countries');
+    for (final country in [found?['network'], found?['sim']]) {
+      if (_countryCurrency[country?.toUpperCase()] case final code?) return code;
+    }
+  } catch (_) {
+    // No telephony (tablet, tests): fall back to the region setting.
+  }
+  return currencyForLocale(Platform.localeName);
+}
 
 String currencyForLocale(String locale) {
   final parts = locale.split(RegExp('[-_.]'));
