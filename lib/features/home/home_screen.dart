@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/chart_colors.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../data/database.dart';
 import '../../data/providers.dart';
+import '../../data/rates.dart';
 import '../../data/renewal.dart';
 import '../edit/edit_screen.dart';
 import '../edit/template_sheet.dart';
+import '../insights/insights_screen.dart';
 import '../settings/settings_screen.dart';
 
 /// A subscription with its next bill worked out for today.
@@ -35,7 +38,6 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subs = ref.watch(subscriptionsProvider).value ?? const [];
-    final currency = ref.watch(settingsProvider).value?.currency ?? 'USD';
     final today = DateTime.now();
     final active = [for (final s in subs) if (s.active) _Upcoming(s, today)]
       ..sort((a, b) => a.next.compareTo(b.next));
@@ -67,7 +69,9 @@ class HomeScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
               children: [
-                _Summary(active: active, currency: currency),
+                _Summary(active: active),
+                const SizedBox(height: 12),
+                const _CategoryStrip(),
                 const SizedBox(height: 20),
                 if (active.isNotEmpty) const _Heading('Coming up'),
                 for (final u in active) _Tile(upcoming: u, today: today),
@@ -82,24 +86,27 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _Summary extends StatelessWidget {
-  const _Summary({required this.active, required this.currency});
+class _Summary extends ConsumerWidget {
+  const _Summary({required this.active});
   final List<_Upcoming> active;
-  final String currency;
 
   @override
-  Widget build(BuildContext context) {
-    // Totals per currency; the main currency is shown large, others below it.
-    final perMonth = <String, double>{};
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spending = ref.watch(spendingProvider);
+    final converter = Converter(ref.watch(ratesProvider).value ?? const {});
+    final currency = spending.currency;
+    // Next 7 days, converted like the total; anything without a rate is listed apart.
+    var week = 0.0;
+    final weekOther = <String, double>{};
     for (final u in active) {
-      perMonth[u.sub.currency] =
-          (perMonth[u.sub.currency] ?? 0) + u.sub.cycle.perMonth(u.sub.amountMinor);
-    }
-    final main = perMonth.remove(currency) ?? 0;
-    final soon = active.where((u) => u.next.difference(dateOnly(DateTime.now())).inDays < 7);
-    final soonTotal = <String, int>{};
-    for (final u in soon) {
-      soonTotal[u.sub.currency] = (soonTotal[u.sub.currency] ?? 0) + u.sub.amountMinor;
+      if (u.next.difference(dateOnly(DateTime.now())).inDays >= 7) continue;
+      final amount = fromMinor(u.sub.amountMinor, u.sub.currency);
+      final converted = converter.convert(amount, u.sub.currency, currency);
+      if (converted != null) {
+        week += converted;
+      } else {
+        weekOther[u.sub.currency] = (weekOther[u.sub.currency] ?? 0) + amount;
+      }
     }
 
     const light = TextStyle(color: Color(0xFFC7D2FE));
@@ -119,27 +126,115 @@ class _Summary extends StatelessWidget {
           const Text('You spend each month', style: light),
           const SizedBox(height: 4),
           Text(
-            money(main, currency),
+            moneyMajor(spending.monthly, currency),
             style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800),
           ),
-          for (final e in perMonth.entries)
-            Text('+ ${money(e.value, e.key)} / month', style: light),
+          if (spending.convertedCount > 0)
+            Text(
+              'Includes ${spending.convertedCount} converted from other currencies',
+              style: light.copyWith(fontSize: 12),
+            ),
+          for (final e in spending.unconverted.entries)
+            Text('+ ${moneyMajor(e.value, e.key)} / month (no rate yet)', style: light),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _Stat('Per year', money(main * 12, currency))),
+              Expanded(child: _Stat('Per year', moneyMajor(spending.monthly * 12, currency))),
               Expanded(child: _Stat('Active', '${active.length}')),
               Expanded(
                 child: _Stat(
                   'Next 7 days',
-                  soonTotal.isEmpty
+                  week == 0 && weekOther.isEmpty
                       ? 'Nothing'
-                      : soonTotal.entries.map((e) => money(e.value, e.key)).join(' + '),
+                      : [
+                          if (week > 0) moneyMajor(week, currency),
+                          for (final e in weekOther.entries) moneyMajor(e.value, e.key),
+                        ].join(' + '),
                 ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One stacked bar of spend by category; tapping opens Insights.
+class _CategoryStrip extends ConsumerWidget {
+  const _CategoryStrip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spending = ref.watch(spendingProvider);
+    final slices = categorySlices(spending.byCategory, maxSlices: 5);
+    if (slices.isEmpty || spending.monthly <= 0) return const SizedBox();
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InsightsScreen())),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Expanded(
+                    child: Text('Where it goes', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  ),
+                  Text('Insights', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  Icon(Icons.chevron_right, color: AppColors.primary),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  height: 12,
+                  width: double.infinity,
+                  child: Row(
+                    // Stretch so each segment fills the bar's height.
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < slices.length; i++) ...[
+                        // 2px surface gap between segments.
+                        if (i > 0) const SizedBox(width: 2),
+                        Expanded(
+                          flex: (slices[i].amount / spending.monthly * 1000).round().clamp(1, 1000),
+                          child: ColoredBox(color: slices[i].color),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 14,
+                runSpacing: 6,
+                children: [
+                  for (final s in slices)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(color: s.color, borderRadius: BorderRadius.circular(3)),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${s.label} ${(s.amount / spending.monthly * 100).round()}%',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

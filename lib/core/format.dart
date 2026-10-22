@@ -48,6 +48,20 @@ Future<String> deviceCurrency() async {
   return currencyForLocale(Platform.localeName);
 }
 
+/// The country the phone is in now, from the mobile network or SIM. Never
+/// asks for location, so it's safe to call on every start.
+Future<String?> currentCountry() async {
+  try {
+    final found = await _country.invokeMapMethod<String, String>('countries');
+    for (final country in [found?['network'], found?['sim']]) {
+      if (country != null && country.length == 2) return country.toUpperCase();
+    }
+  } catch (_) {}
+  return null;
+}
+
+String? currencyOfCountry(String country) => _countryCurrency[country.toUpperCase()];
+
 String currencyForLocale(String locale) {
   final parts = locale.split(RegExp('[-_.]'));
   final country = parts.length > 1 ? parts[1].toUpperCase() : '';
@@ -79,8 +93,15 @@ double fromMinor(num minor, String currency) {
   return minor / factor;
 }
 
-String money(num minor, String currency) =>
-    NumberFormat.simpleCurrency(name: currency).format(fromMinor(minor, currency));
+String money(num minor, String currency) => moneyMajor(fromMinor(minor, currency), currency);
+
+/// [amount] already in major units (dollars, rupees).
+String moneyMajor(num amount, String currency) =>
+    NumberFormat.simpleCurrency(name: currency).format(amount);
+
+/// Short form for chart axes: Rs1.2K, $45.
+String moneyCompact(num amount, String currency) =>
+    NumberFormat.compactSimpleCurrency(name: currency).format(amount);
 
 /// "Today", "Tomorrow", "In 5 days", then a date for anything further.
 String whenLabel(DateTime date, DateTime today) {
